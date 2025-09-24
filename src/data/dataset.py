@@ -6,8 +6,18 @@ It handles loading image-mask pairs from specified directories.
 
 import os
 import glob
+import yaml
 from PIL import Image
 from torch.utils.data import Dataset
+from torchvision import transforms as T
+
+# Load config
+if not os.path.exists("configs/config.yaml"):
+    raise FileNotFoundError("Config file not found at configs/config.yaml")
+
+with open("configs/config.yaml", "r", encoding="utf-8") as file:
+    config = yaml.safe_load(file)
+
 
 
 class BaseDataset(Dataset):
@@ -32,6 +42,7 @@ class BaseDataset(Dataset):
         self.masks_folder = masks_folder
         self.transforms = transforms
         self.target_transforms = target_transforms
+        self.image_size = config["dataset"]["image_size"]
         self.image_list = sorted(
             [
                 f
@@ -46,6 +57,29 @@ class BaseDataset(Dataset):
                 if f.lower().endswith((".png", ".jpg", ".jpeg"))
             ]
         )
+
+        # Define default transforms if none are provided
+        # This ensures the data is always converted to a tensor
+        # Create the full dataset
+        if self.transforms is None:
+            self.transforms = T.Compose(
+                [
+                    T.Resize(
+                        (self.image_size, self.image_size)
+                    ),  # Resize images to a fixed size
+                    T.ToTensor(),  # Convert images to PyTorch tensors
+                ]
+            )
+
+        if self.target_transforms is None:
+            self.target_transforms = T.Compose(
+                [
+                    T.Resize(
+                        (self.image_size, self.image_size)
+                    ),  # Resize masks to a fixed size
+                    T.ToTensor(),  # Convert masks to PyTorch tensors
+                ]
+            )
 
         assert len(self.image_list) == len(
             self.mask_list
