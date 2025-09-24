@@ -1,1 +1,11 @@
-data/
+data/train/images/*
+data/train/masks/*
+data/test/images/*
+data/test/masks/*
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
