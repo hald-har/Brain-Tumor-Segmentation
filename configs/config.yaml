@@ -1,0 +1,28 @@
+# config.yaml
+dataset:
+  images_folder: "data/train/images"
+  masks_folder: "data/train/masks"
+  test_images_folder: "data/test/images"
+  test_masks_folder: "data/test/masks"
+  image_size: 512                          # Default image size (square)
+
+#small dataset for quick testing
+sample_dataset:
+  images_folder: "src/sample_images/images"
+  masks_folder: "src/sample_images/masks"
+  num_samples: 5
+  num_workers: 1
+  val_split:  0.1
+  batch_size: 2
+
+
+split:
+  val_split: 0.1
+  shuffle: True
+  random_seed: 42
+
+training:
+  batch_size: 32
+  learning_rate: 0.001
+  num_workers: 4
+  epochs: 20
