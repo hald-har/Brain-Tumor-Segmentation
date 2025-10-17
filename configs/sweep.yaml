@@ -1,0 +1,23 @@
+program: train.py
+
+method: bayes
+metric:
+  name: val_dice
+  goal: maximize
+
+parameters:
+  epochs:
+    value: 10        
+  batch_size:
+    values: [16,32]
+  learning_rate:
+    min: 0.001
+    max: 0.01
+  features:
+    values: [16,32]
+  optimizer:           
+    values: ["adam", "sgd"]
+  amp:
+    values: [True]
+  image_size:
+    values: [224]

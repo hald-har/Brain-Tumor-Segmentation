@@ -8,16 +8,13 @@ import os
 import glob
 import yaml
 from PIL import Image
+import numpy as np
+import torch
 from torch.utils.data import Dataset
 from torchvision import transforms as T
+from torchvision.transforms import InterpolationMode
 
-# Load config
-if not os.path.exists("configs/config.yaml"):
-    raise FileNotFoundError("Config file not found at configs/config.yaml")
-
-with open("configs/config.yaml", "r", encoding="utf-8") as file:
-    config = yaml.safe_load(file)
-
+from src.data.transforms import get_train_transforms, get_val_transforms
 
 
 class BaseDataset(Dataset):
@@ -36,50 +33,52 @@ class BaseDataset(Dataset):
     """
 
     def __init__(
-        self, images_folder, masks_folder, transforms=None, target_transforms=None
+        self,
+        images_folder="../train/images",
+        masks_folder="../train/masks",
+        image_size=224,
     ):
+
+        # Validate folder existence
+        if not os.path.exists(images_folder):
+            raise FileNotFoundError(f"Images folder not found: {images_folder}")
+        if not os.path.exists(masks_folder):
+            raise FileNotFoundError(f"Masks folder not found: {masks_folder}")
+
         self.images_folder = images_folder
         self.masks_folder = masks_folder
-        self.transforms = transforms
-        self.target_transforms = target_transforms
-        self.image_size = config["dataset"]["image_size"]
+        self.image_size = image_size
+        self.transforms = T.Compose(
+            [
+                T.Resize(
+                    (self.image_size, self.image_size)
+                ),  # Resize images to a fixed size
+                T.ToTensor(),  # Convert images to PyTorch tensors
+            ]
+        )
+        self.target_transforms = T.Compose(
+            [
+                T.Resize(
+                    (self.image_size, self.image_size),
+                    interpolation=InterpolationMode.NEAREST,
+                ),
+                T.ToTensor(),
+            ]
+        )
         self.image_list = sorted(
             [
                 f
-                for f in glob.glob(os.path.join(images_folder, "*"))
+                for f in glob.glob(str(os.path.join(images_folder, "*")))
                 if f.lower().endswith((".png", ".jpg", ".jpeg"))
             ]
         )
         self.mask_list = sorted(
             [
                 f
-                for f in glob.glob(os.path.join(masks_folder, "*"))
+                for f in glob.glob(str(os.path.join(masks_folder, "*")))
                 if f.lower().endswith((".png", ".jpg", ".jpeg"))
             ]
         )
-
-        # Define default transforms if none are provided
-        # This ensures the data is always converted to a tensor
-        # Create the full dataset
-        if self.transforms is None:
-            self.transforms = T.Compose(
-                [
-                    T.Resize(
-                        (self.image_size, self.image_size)
-                    ),  # Resize images to a fixed size
-                    T.ToTensor(),  # Convert images to PyTorch tensors
-                ]
-            )
-
-        if self.target_transforms is None:
-            self.target_transforms = T.Compose(
-                [
-                    T.Resize(
-                        (self.image_size, self.image_size)
-                    ),  # Resize masks to a fixed size
-                    T.ToTensor(),  # Convert masks to PyTorch tensors
-                ]
-            )
 
         assert len(self.image_list) == len(
             self.mask_list
@@ -87,13 +86,14 @@ class BaseDataset(Dataset):
 
     def __getitem__(self, index):
         image = Image.open(self.image_list[index]).convert("RGB")
-        mask = Image.open(self.mask_list[index]).convert("L")
+        mask = np.array(Image.open(self.mask_list[index]).convert("L"))
 
-        if self.transforms:
-            image = self.transforms(image)
+        # Convert mask to binary
+        mask = np.where(mask > 0, 1, 0)
+        mask = Image.fromarray((mask * 255).astype(np.uint8))
 
-        if self.target_transforms:
-            mask = self.target_transforms(mask)
+        image = self.transforms(image)
+        mask = self.target_transforms(mask)
 
         return image, mask
 

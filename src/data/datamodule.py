@@ -5,13 +5,11 @@ Defines SegmentationDataModule to handle train/val/test/sample dataloaders
 with configurable transforms and dataset paths.
 """
 
-import os
-import yaml
-import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms as T
 
 from src.data.dataset import BaseDataset
+
 
 
 class SegmentationDataModule:
@@ -28,57 +26,46 @@ class SegmentationDataModule:
         val_dataset (Subset): Validation split.
     """
 
-    def __init__(self, config_path="configs/config.yaml", transforms=None, target_transforms=None):
-        """Initialize the data module and datasets."""
-        if not os.path.exists(config_path):
-            raise FileNotFoundError(f"Config file not found at {config_path}")
-
-        with open(config_path, "r", encoding="utf-8") as file:
-            self.config = yaml.safe_load(file)
+    def __init__(
+        self,
+        images_folder="../train/images",
+        masks_folder="../train/masks",
+        test_images_folder="../test/images",
+        test_masks_folder="../test/masks",
+        num_workers=1,
+        val_split=0.1,
+        shuffle=True,
+        image_size=224,
+        batch_size=32,
+    ):
 
         # Dataset paths and training settings
-        self.images_folder = self.config["dataset"]["images_folder"]
-        self.masks_folder = self.config["dataset"]["masks_folder"]
-        self.batch_size = self.config["training"]["batch_size"]
-        self.num_workers = self.config["training"]["num_workers"]
-        self.val_split = self.config["split"]["val_split"]
-        self.shuffle = self.config["split"]["shuffle"]
-        self.random_seed = self.config["split"]["random_seed"]
-        self.image_size = self.config["dataset"]["image_size"]
-
+        self.images_folder = images_folder
+        self.masks_folder = masks_folder
+        self.test_images_folder = test_images_folder
+        self.test_masks_folder = test_masks_folder
+        self.num_workers = num_workers
+        self.val_split = val_split
+        self.shuffle = shuffle
+        self.image_size = image_size
+        self.batch_size = batch_size
         # Sample dataset settings
-        self.sample_images_folder = self.config["sample_dataset"]["images_folder"]
-        self.sample_masks_folder = self.config["sample_dataset"]["masks_folder"]
-        self.sample_batch_size = self.config["sample_dataset"]["batch_size"]
-        self.sample_num_workers = self.config["sample_dataset"]["num_workers"]
-
-        # Default transforms
-        if transforms is None:
-            self.transforms = T.Compose([
-                T.Resize((self.image_size, self.image_size)),
-                T.ToTensor(),
-            ])
-        else:
-            self.transforms = transforms
-
-        if target_transforms is None:
-            self.target_transforms = T.Compose([
-                T.Resize((self.image_size, self.image_size)),
-                T.ToTensor(),
-            ])
-        else:
-            self.target_transforms = target_transforms
+        self.sample_images_folder = "src/sample_images/images"
+        self.sample_masks_folder = "src/sample_images/masks"
+        self.sample_batch_size = 2
+        self.sample_num_workers = 1
 
         # Full dataset and train/val split
         self.dataset = BaseDataset(
-            self.images_folder, self.masks_folder, self.transforms, self.target_transforms
+            self.images_folder,
+            self.masks_folder,
+            self.image_size,
         )
+
         val_size = int(len(self.dataset) * self.val_split)
         train_size = len(self.dataset) - val_size
         self.train_dataset, self.val_dataset = random_split(
-            self.dataset,
-            [train_size, val_size],
-            generator=torch.Generator().manual_seed(self.random_seed),
+            self.dataset, [train_size, val_size]
         )
 
     def train_dataloader(self):
@@ -101,14 +88,8 @@ class SegmentationDataModule:
 
     def test_dataloader(self):
         """Returns DataLoader for test dataset."""
-        test_images_folder = self.config["dataset"]["test_images_folder"]
-        test_masks_folder = self.config["dataset"]["test_masks_folder"]
-
         test_dataset = BaseDataset(
-            test_images_folder,
-            test_masks_folder,
-            self.transforms,
-            self.target_transforms,
+            self.test_images_folder, self.test_masks_folder, self.image_size
         )
 
         return DataLoader(
@@ -123,20 +104,11 @@ class SegmentationDataModule:
         sample_dataset = BaseDataset(
             self.sample_images_folder,
             self.sample_masks_folder,
-            self.transforms,
-            self.target_transforms,
-        )
-
-        val_size = int(len(sample_dataset) * self.val_split)
-        train_size = len(sample_dataset) - val_size
-        train_dataset, _ = random_split(
-            sample_dataset,
-            [train_size, val_size],
-            generator=torch.Generator().manual_seed(self.random_seed),
+            self.image_size,
         )
 
         return DataLoader(
-            train_dataset,
+            sample_dataset,
             batch_size=self.sample_batch_size,
             shuffle=self.shuffle,
             num_workers=self.sample_num_workers,
