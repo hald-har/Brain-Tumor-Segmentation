@@ -209,7 +209,7 @@ Below are examples of **ground truth masks** and their corresponding **predicted
 
 ### Clone the Repository
 ```bash
-git clone https://github.com/hald-har/U-Net.git
+git clone https://github.com/hald-har/Brain-Tumor-Segmentation.git
 cd U-Net
 ```
 -Update the dataset paths and other parameters in configs/config.yaml as needed.
