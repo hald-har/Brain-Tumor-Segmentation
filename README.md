@@ -197,7 +197,7 @@ Below are examples of **ground truth masks** and their corresponding **predicted
 
   <div>
     <p>Predicted Mask</p>
-    <img src="assets/mask.png" width="250">
+    <img src="assets/prdicted.png" width="250">
   </div>
 </div>
 
